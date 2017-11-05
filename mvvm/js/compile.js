@@ -3,7 +3,7 @@ function Compile(el, vm) {
   this.$el = this.isElementNode(el) ? el : document.querySelector(el);
 
   if (this.$el) {
-    this.$fragment = this.node2Fragment(this.$el);
+    this.$fragment = this.node2Fragment(this.$el); // 为提高性能和效率，会先将跟节点el转换成文档碎片fragment进行解析编译操作
     this.init();
     this.$el.appendChild(this.$fragment);
   }
@@ -32,8 +32,9 @@ Compile.prototype = {
 
     [].slice.call(childNodes).forEach(function (node) {
       var text = node.textContent;
-      var reg = /\{\{(.*)\}\}/;
+      var reg = /\{\{(.*)\}\}/; // 表达式文本
 
+      // 按元素节点方式编译
       if (me.isElementNode(node)) {
         me.compile(node);
 
@@ -51,16 +52,19 @@ Compile.prototype = {
     var nodeAttrs = node.attributes,
       me = this;
 
+    // 规定：指令以 v-xxx 命名
+    // 如 <span v-text="content"></span> 中指令为 v-text
     [].slice.call(nodeAttrs).forEach(function (attr) {
-      var attrName = attr.name;
+      var attrName = attr.name; // v-text
       if (me.isDirective(attrName)) {
-        var exp = attr.value;
-        var dir = attrName.substring(2);
-        // 事件指令
+        var exp = attr.value; // content
+        var dir = attrName.substring(2); // text
+        // 事件指令, 如 v-on:click
         if (me.isEventDirective(dir)) {
           compileUtil.eventHandler(node, me.$vm, exp, dir);
           // 普通指令
         } else {
+          // 普通指令
           compileUtil[dir] && compileUtil[dir](node, me.$vm, exp);
         }
 
@@ -122,10 +126,11 @@ var compileUtil = {
 
   bind: function (node, vm, exp, dir) {
     var updaterFn = updater[dir + 'Updater'];
-
+    // 第一次初始化视图
     updaterFn && updaterFn(node, this._getVMVal(vm, exp));
-
+    // 实例化订阅者，此操作会在对应的属性消息订阅器中添加了该订阅者watcher
     new Watcher(vm, exp, function (value, oldValue) {
+      // 一旦属性值有变化，会收到通知执行此更新函数，更新视图
       updaterFn && updaterFn(node, value, oldValue);
     });
   },
@@ -163,7 +168,7 @@ var compileUtil = {
   }
 };
 
-
+// 更新函数
 var updater = {
   textUpdater: function (node, value) {
     node.textContent = typeof value == 'undefined' ? '' : value;
